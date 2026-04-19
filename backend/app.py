@@ -5,14 +5,19 @@ Flask REST API for lexical analysis & AI explanations via OpenRouter (GPT-3.5).
 
 import re
 import requests
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
 # ─── OpenRouter configuration ───────────────────────────────────────────────
-OPENROUTER_API_KEY = "YOUR_API_KEY_HERE"
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "YOUR_API_KEY_HERE")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 MODEL = "openai/gpt-3.5-turbo"
 
