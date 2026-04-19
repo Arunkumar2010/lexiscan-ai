@@ -17,20 +17,43 @@ app = Flask(__name__)
 CORS(app)
 
 # ─── OpenRouter configuration ───────────────────────────────────────────────
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "YOUR_API_KEY_HERE")
+API_KEY = os.getenv("API_KEY")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 MODEL = "openai/gpt-3.5-turbo"
 
 def explain_token(token: str, token_type: str) -> str:
     """
-    Hybrid Explanation System:
-    1. Try OpenRouter (GPT-3.5) first.
-    2. Fallback to predefined explanations if API fails.
+    Secure Hybrid Explanation System:
+    1. Check for API_KEY presence.
+    2. Try OpenRouter (GPT-3.5) with a strict 2s timeout.
+    3. Fallback to predefined local explanations if anything fails.
     """
-    prompt = f"Explain the programming token '{token}' of type '{token_type}' in simple lines. Format your response exactly like this:\nMeaning: <short meaning>\nExplanation: <detailed explanation>\nExample: <code example>\nKeep it beginner-friendly."
+    
+    # 🥇 Fallback Data (Pro Level)
+    fallbacks = {
+        "KEYWORD":    f"Meaning: Reserved word\nExplanation: {token} has a predefined meaning in the language.\nExample: int x = 10;",
+        "IDENTIFIER": f"Meaning: User-defined name\nExplanation: {token} is a name you gave to a variable or function.\nExample: int {token} = 5;",
+        "NUMBER":     f"Meaning: Numeric value\nExplanation: {token} represents a fixed value used in math or storage.\nExample: price = {token};",
+        "OPERATOR":   f"Meaning: Math/Logic symbol\nExplanation: {token} performs an action on variables/values.\nExample: a {token} b",
+        "SYMBOL":     f"Meaning: Punctuation\nExplanation: {token} structures the code syntax (begins/ends blocks).\nExample: if (a) {{ ... {token}",
+        "INVALID":    f"Meaning: Error\nExplanation: {token} is not recognized and will cause a syntax error.\nExample: Remove or fix {token}",
+    }
+
+    if not API_KEY or API_KEY == "YOUR_API_KEY_HERE":
+        return fallbacks.get(token_type, "Basic building block of code.")
+
+    prompt = f"""
+Explain the programming token '{token}' of type '{token_type}'.
+
+Rules:
+- Keep it very simple (beginner level)
+- Max 3 lines
+- Include one example
+- No extra theory
+"""
 
     headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
     }
     
@@ -42,7 +65,8 @@ def explain_token(token: str, token_type: str) -> str:
     }
 
     try:
-        response = requests.post(OPENROUTER_URL, headers=headers, json=payload, timeout=10)
+        # Tight 2-second timeout for snappy UI
+        response = requests.post(OPENROUTER_URL, headers=headers, json=payload, timeout=2)
         response.raise_for_status()
         
         data = response.json()
@@ -52,21 +76,8 @@ def explain_token(token: str, token_type: str) -> str:
         raise Exception("Invalid API response format")
 
     except Exception as exc:
-        print(f"DEBUG: OpenRouter failed ({exc}). Using fallback strategy.")
-        
-        # 🥇 Fallback Strategy (Pro Level)
-        fallbacks = {
-            "KEYWORD":    f"'{token}' is a reserved keyword in the programming language. These words have predefined meanings and cannot be used as variable names.",
-            "IDENTIFIER": f"'{token}' is an identifier. It is a user-defined name used to identify a variable, function, or class in your code.",
-            "NUMBER":     f"'{token}' is a numeric constant. It represents a fixed mathematical value used for calculations or data storage.",
-            "OPERATOR":   f"'{token}' is an operator. It is a special character used to perform operations like addition, subtraction, or assignment on variables.",
-            "SYMBOL":     f"'{token}' is a syntax symbol (punctuation). It helps the compiler understand the structure and boundaries of your code.",
-            "STRING":     f"'{token}' is a string literal. It represents a sequence of characters, usually text, enclosed in quotes.",
-            "COMMENT":    "This is a comment. It is used to describe what the code does and is ignored by the compiler during execution.",
-            "INVALID":    f"'{token}' is an invalid or unknown character. It does not follow the lexical rules of this language and should be removed or corrected."
-        }
-        
-        return fallbacks.get(token_type, "This is a basic building block of programming code.")
+        print(f"DEBUG: AI Explain failed ({type(exc).__name__}). Using local fallback.")
+        return fallbacks.get(token_type, "Standard programming construct.")
 
 
 # ─── Token specification ───────────────────────────────────────────────────────
