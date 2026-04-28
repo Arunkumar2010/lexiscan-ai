@@ -215,8 +215,8 @@ class LR0Parser {
         const conflicts = [];
 
         this.states.forEach((state, i) => {
-            const actionRow = { id: i };
-            const gotoRow = { id: i };
+            const actionRow = { _stateId: i };
+            const gotoRow = { _stateId: i };
             this.transitions.forEach(t => {
                 if (t.from === i) {
                     if (this.terminals.has(t.symbol)) actionRow[t.symbol] = `s${t.to}`;
