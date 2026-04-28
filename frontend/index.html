@@ -3,18 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LexiScan — Online Lexical Analyzer</title>
-  <meta name="description" content="LexiScan: tokenize your source code instantly with a modern dark-mode lexical analyzer." />
+  <title>LexiScan — Lexical Analyzer & LR(0) Parser</title>
+  <meta name="description" content="LexiScan: tokenize source code and visualize LR(0) parser construction with a modern dark-mode interface." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./style.css?v=1.1" />
 </head>
 <body>
 
   <!-- ── AI EXPLANATION MODAL ── -->
   <div id="ai-backdrop" class="ai-backdrop"></div>
-  
   <div id="ai-modal" class="ai-modal">
     <div class="ai-modal-head">
       <div class="ai-modal-title">
@@ -23,14 +22,11 @@
       </div>
       <button id="ai-close-btn" class="ai-close-btn" aria-label="Close Modal">&times;</button>
     </div>
-    
     <div class="ai-modal-body">
-      <!-- Token header info -->
       <div class="ai-token-header">
         <span id="ai-token-val" class="ai-token-val"></span>
         <span id="ai-token-type" class="ai-token-type"></span>
       </div>
-      <!-- Loading / Content -->
       <div class="ai-scroll-area">
         <div id="ai-loading" class="ai-loading" hidden>
           <div class="ai-spinner"></div>
@@ -53,7 +49,6 @@
     </div>
   </div>
 
-
   <!-- ambient glow blobs -->
   <div class="blob blob-1"></div>
   <div class="blob blob-2"></div>
@@ -66,66 +61,210 @@
         <span class="logo-bolt">&#9889;</span>
         <h1>LexiScan</h1>
       </div>
-      <p class="tagline">Online Lexical Analyzer &amp; Tokenizer</p>
+      <p class="tagline">Online Lexical Analyzer &amp; LR(0) Parser</p>
     </header>
 
-    <!-- ── EDITOR CARD ── -->
-    <section class="card" id="editor-card">
-      <div class="card-head">
-        <div class="filetab">
-          <span class="filetab-dot"></span>
-          <span>source.cpp</span>
-        </div>
-        <div class="head-actions">
-          <button id="clear-btn"   class="btn btn-ghost">Clear</button>
-          <button id="analyze-btn" class="btn btn-primary">
-            <span id="btn-label">Analyze Code</span>
-            <span id="btn-spinner" class="spinner" hidden></span>
-          </button>
-        </div>
-      </div>
-      <div class="editor-wrap">
-        <div class="line-nums" id="line-nums"><div>1</div></div>
-        <textarea id="code-input" spellcheck="false"
-          placeholder="// Paste your code here…"></textarea>
-      </div>
-    </section>
+    <!-- ══════════════════════════════════════════ -->
+    <!-- TOP TAB NAVIGATION                        -->
+    <!-- ══════════════════════════════════════════ -->
+    <div class="tab-bar" style="display:flex;width:100%;gap:.5rem;background:#181b25;border:1px solid #2a2f42;border-radius:14px;padding:.4rem;box-shadow:0 4px 16px rgba(0,0,0,.3);">
+      <button id="btn-tab-lexical" class="tab-btn tab-btn-active"
+              onclick="switchTab('lexical')"
+              style="flex:1;padding:1rem 1.5rem;border:none;border-radius:10px;font-family:inherit;font-size:1rem;font-weight:600;cursor:pointer;background:linear-gradient(135deg,rgba(168,85,247,.22),rgba(124,58,237,.16));color:#fff;box-shadow:0 0 0 1px rgba(168,85,247,.38) inset;transition:all .25s ease;">
+        🔍 Lexical Analyzer
+      </button>
+      <button id="btn-tab-lr0" class="tab-btn"
+              onclick="switchTab('lr0')"
+              style="flex:1;padding:1rem 1.5rem;border:none;border-radius:10px;font-family:inherit;font-size:1rem;font-weight:600;cursor:pointer;background:transparent;color:#8892a4;transition:all .25s ease;">
+        ⚙️ LR(0) Parser
+      </button>
+    </div>
 
-    <!-- ── RESULTS CARD ── -->
-    <section class="card" id="results-card">
-      <div class="card-head">
-        <h2 class="results-title">Analysis Results</h2>
-        <div class="head-actions" id="result-actions" hidden>
-          <button id="copy-btn"     class="btn btn-ghost">&#128203; Copy JSON</button>
-          <button id="download-btn" class="btn btn-ghost">&#8659; Download</button>
-          <span   id="status-badge" class="badge badge-ok">Ready</span>
+    <!-- ══════════════════════════════════════════ -->
+    <!-- SECTION 1: LEXICAL ANALYZER               -->
+    <!-- ══════════════════════════════════════════ -->
+    <div id="lexicalSection">
+
+      <!-- Editor Card -->
+      <section class="card" id="editor-card">
+        <div class="card-head">
+          <div class="filetab">
+            <span class="filetab-dot"></span>
+            <span>source.cpp</span>
+          </div>
+          <div class="head-actions">
+            <button id="clear-btn" class="btn btn-ghost">Clear</button>
+            <button id="analyze-btn" class="btn btn-primary" onclick="analyzeCode()">
+              <span id="btn-label">Analyze Code</span>
+              <span id="btn-spinner" class="spinner" hidden></span>
+            </button>
+          </div>
         </div>
-        <span id="idle-badge" class="badge badge-ok">Ready</span>
-      </div>
-
-      <!-- warning banner -->
-      <div id="warn-bar" class="warn-bar" hidden>
-        &#9888;&#65039; <strong>Invalid tokens detected.</strong>
-        Unknown characters are flagged in red below.
-      </div>
-
-      <!-- summary chips -->
-      <div id="summary" class="summary" hidden></div>
-
-      <!-- body: table / empty / error -->
-      <div id="results-body" class="results-body">
-        <div class="empty-state">
-          <div class="empty-icon">&#128269;</div>
-          <p>Paste code above and click <strong>Analyze Code</strong> to begin.</p>
+        <div class="editor-wrap">
+          <div class="line-nums" id="line-nums"><div>1</div></div>
+          <textarea id="codeInput" class="dark-input" spellcheck="false"
+            placeholder="// Paste your code here…"></textarea>
         </div>
-      </div>
-    </section>
+      </section>
+
+      <!-- Results Card -->
+      <section class="card" id="results-card">
+        <div class="card-head">
+          <h2 class="results-title">Analysis Results</h2>
+          <div class="head-actions" id="result-actions" hidden>
+            <button id="copy-btn"     class="btn btn-ghost">&#128203; Copy JSON</button>
+            <button id="download-btn" class="btn btn-ghost">&#8659; Download</button>
+            <span   id="status-badge" class="badge badge-ok">Ready</span>
+          </div>
+          <span id="idle-badge" class="badge badge-ok">Ready</span>
+        </div>
+        <div id="warn-bar" class="warn-bar" hidden>
+          &#9888;&#65039; <strong>Invalid tokens detected.</strong>
+          Unknown characters are flagged in red below.
+        </div>
+        <div id="summary" class="summary" hidden></div>
+        <div id="results-body" class="results-body">
+          <div class="empty-state">
+            <div class="empty-icon">&#128269;</div>
+            <p>Paste code above and click <strong>Analyze Code</strong> to begin.</p>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /#lexicalSection -->
+
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- SECTION 2: LR(0) PARSER                   -->
+    <!-- ══════════════════════════════════════════ -->
+    <div id="lr0Section" style="display:none;">
+
+      <!-- Input Card -->
+      <section class="card">
+        <div class="card-head">
+          <div class="filetab">
+            <span class="filetab-dot" style="background:#a855f7;"></span>
+            <span>grammar.cfg</span>
+          </div>
+          <div class="head-actions">
+            <button class="btn btn-ghost" onclick="clearLR0()">Clear</button>
+            <button id="lr0-generate-btn" class="btn btn-primary" onclick="generateLR0()">
+              <span id="lr0-btn-label">Generate LR(0)</span>
+              <span id="lr0-btn-spinner" class="spinner" hidden></span>
+            </button>
+          </div>
+        </div>
+        <div class="lr0-input-body">
+          <div class="lr0-field-group">
+            <label class="lr0-label" for="grammarInput">
+              📝 Context-Free Grammar
+              <span class="lr0-label-hint">One production per line · Use | for alternatives</span>
+            </label>
+            <textarea id="grammarInput" class="lr0-textarea dark-input" spellcheck="false"
+              placeholder="E -> E + T | T&#10;T -> T * F | F&#10;F -> ( E ) | id" rows="5">E -> E + T | T
+T -> T * F | F
+F -> ( E ) | id</textarea>
+          </div>
+          <div class="lr0-field-group">
+            <label class="lr0-label" for="lr0Input">
+              🧪 Test String
+              <span class="lr0-label-hint">Space-separated tokens</span>
+            </label>
+            <input type="text" id="lr0Input" class="lr0-input dark-input"
+              placeholder="e.g. id + id * id" value="id + id * id" />
+          </div>
+        </div>
+      </section>
+
+      <!-- Output Container -->
+      <div id="lr0-output-container">
+
+        <!-- Status / empty state -->
+        <div id="lr0-status-card" class="card">
+          <div class="results-body">
+            <div class="empty-state">
+              <div class="empty-icon">⚙️</div>
+              <p>Enter a grammar and click <strong>Generate LR(0)</strong> to begin.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Results (hidden until generated) -->
+        <div id="lr0-results" style="display:none;">
+
+          <!-- ① Augmented Grammar -->
+          <section class="card lr0-result-card">
+            <div class="card-head lr0-acc-head">
+              <button class="lr0-acc-btn" aria-expanded="true" onclick="toggleAccordion(this,'lr0-aug-body')">
+                <span class="lr0-num-badge">①</span>
+                Augmented Grammar
+                <span class="lr0-chevron">▾</span>
+              </button>
+              <span class="badge badge-ok" style="font-size:.72rem;">✓ Done</span>
+            </div>
+            <div id="lr0-aug-body" class="lr0-acc-body">
+              <div id="lr0-aug-content" class="lr0-aug-list"></div>
+            </div>
+          </section>
+
+          <!-- ② Canonical Collection -->
+          <section class="card lr0-result-card">
+            <div class="card-head lr0-acc-head">
+              <button class="lr0-acc-btn" aria-expanded="true" onclick="toggleAccordion(this,'lr0-states-body')">
+                <span class="lr0-num-badge">②</span>
+                Canonical Collection of LR(0) Items
+                <span class="lr0-chevron">▾</span>
+              </button>
+              <span id="lr0-state-count" class="badge badge-busy" style="font-size:.72rem;"></span>
+            </div>
+            <div id="lr0-states-body" class="lr0-acc-body">
+              <div id="lr0-states-content" class="lr0-states-grid"></div>
+            </div>
+          </section>
+
+          <!-- ③ GOTO Transitions -->
+          <section class="card lr0-result-card">
+            <div class="card-head lr0-acc-head">
+              <button class="lr0-acc-btn" aria-expanded="true" onclick="toggleAccordion(this,'lr0-trans-body')">
+                <span class="lr0-num-badge">③</span>
+                GOTO Transitions
+                <span class="lr0-chevron">▾</span>
+              </button>
+            </div>
+            <div id="lr0-trans-body" class="lr0-acc-body">
+              <div id="lr0-trans-content" class="lr0-trans-wrap"></div>
+            </div>
+          </section>
+
+          <!-- ④ Parsing Table -->
+          <section class="card lr0-result-card">
+            <div class="card-head lr0-acc-head">
+              <button class="lr0-acc-btn" aria-expanded="true" onclick="toggleAccordion(this,'lr0-table-body')">
+                <span class="lr0-num-badge">④</span>
+                Parsing Table (ACTION &amp; GOTO)
+                <span class="lr0-chevron">▾</span>
+              </button>
+            </div>
+            <div id="lr0-table-body" class="lr0-acc-body">
+              <div id="lr0-conflicts-bar" class="lr0-conflicts-bar" style="display:none;"></div>
+              <div id="lr0-table-content" class="lr0-table-wrap"></div>
+            </div>
+          </section>
+
+        </div><!-- /#lr0-results -->
+      </div><!-- /#lr0-output-container -->
+
+    </div><!-- /#lr0Section -->
+
 
     <footer class="app-footer">
       &copy; 2026 LexiScan Pro &mdash; Built for modern developers.
     </footer>
 
   </main>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" hidden></div>
 
   <script src="./script.js"></script>
 </body>
