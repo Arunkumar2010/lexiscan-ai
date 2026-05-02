@@ -19,15 +19,7 @@ Whether you're debugging syntax or learning a new language, LexiScan provides de
 
 ---
 
-## 📸 Screenshots
 
-![Main UI](./screenshots/ui.png)
-*LexiScan main dashboard with code editor and analysis results.*
-
-![Maddy AI Assistant](./screenshots/maddy.png)
-*Maddy explaining a token with interactive suggestions.*
-
----
 
 ## 🛠️ Tech Stack
 
@@ -105,3 +97,8 @@ lexiscan/
 
 ---
 💡 *Tip: You can toggle the AI mode by setting `const USE_API = true;` in `script.js` to enable cloud-based intelligence!*
+
+
+<div align="center">
+Made with ❤️ by Arunkumar S 
+</div>
